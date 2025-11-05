@@ -46,13 +46,13 @@ uv run python main.py
 ## Структура проекта
 ```text
 /
-|-- main.py           # Главный файл: запуск и логика бота
-|-- parser.py         # Модуль для парсинга HTML-страницы Habr
-|-- analyzer.py       # Модуль для анализа тональности комментариев
-|-- wordcloud_gen.py  # Модуль для генерации облака слов
-|-- utils.py          # Вспомогательные функции
-|-- temp/             # Папка для временных файлов
-|-- .env              # Файл с переменными окружения
-|-- requirements.txt  # Список зависимостей
-|-- README.md         # Этот файл
+|-- main.py   
+|-- parser.py         
+|-- analyzer.py       
+|-- wordcloud_gen.py    
+|-- utils.py          
+|-- temp/             
+|-- .env              
+|-- requirements.txt  
+|-- README.md         
 ```
