@@ -5,13 +5,15 @@ import os
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher, types
+from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import CommandStart, Command
 from aiogram.types import FSInputFile, Message
 from aiogram.utils.markdown import hbold
 
 from parser import parse_habr_comments
 from wordcloud_gen import generate_wordcloud_image
-from utils import async_check_link
+from utils import filter_comments
+from analyzer import get_analytics
 
 
 
@@ -22,68 +24,86 @@ TOKEN = os.getenv("BOT_TOKEN")
 if TOKEN is None:
     raise ValueError("Не найден токен бота. Убедитесь, что он задан в .env файле как BOT_TOKEN")
 
-# Инициализация бота и диспетчера
 dp = Dispatcher()
-bot = Bot(TOKEN, parse_mode="HTML")
+bot = Bot(
+    TOKEN, 
+    default=DefaultBotProperties(parse_mode='HTML')
+)
 
 
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message):
     """
-    Хендлер для обработки команды /habr-user
+    Хендлер для обработки команды /start
 
+    :param Message message: сообщение, полученное от пользователя
+    :rtype: None
     """
-    await message.answer(f"Привет, {hbold(message.from_user.full_name)}! Отправь мне команду /habr и ссылку на профиль пользователя Habr.")
+
+    await message.answer(
+        f"Привет, {hbold(message.from_user.full_name)}! Отправь мне команду /habr_user и ссылку на профиль пользователя Habr, чтобы получить анализ комментариев."
+    )
 
 
 
-@dp.message(Command("habr-user"))
+@dp.message(Command("habr_user"))
 async def habr_command_handler(message: Message):
     """
-    Хендлер для обработки команды /habr-user
+    Хендлер для обработки команды /habr_user
+
+    :param Message message: сообщение, полученное от пользователя
+    :rtype: None
     """
-    # Разбиваем сообщение на команду и аргументы
+
     try:
         url = message.text.split(maxsplit=1)[1]
     except IndexError:
-        await message.answer("Пожалуйста, укажите ссылку на профиль Habr после команды /habr.")
+        await message.answer("Пожалуйста, укажите ссылку на профиль Habr через пробел после команды /habr_user в формате http://habr.com/ru/users/username.")
         return
 
-    # Простая проверка на то, что это ссылка на Habr
-    if not url.startswith(("http://habr.com/", "https://habr.com/")):
+    if not url.startswith(("http://habr.com/ru/users", "https://habr.com/ru/users")):
         await message.answer("Пожалуйста, укажите корректную ссылку на профиль пользователя Habr.")
         return
 
     await message.answer("Начинаю обработку... Это может занять некоторое время.")
 
     try:
-        # 1. Запуск парсера
-        comments_words = parse_habr_comments(url)
-        if not comments_words:
-            await message.answer("Не удалось найти комментарии на странице пользователя")
+        comments = parse_habr_comments(url)
+        if not comments:
+            await message.answer("Не удалось найти комментарии на странице или страница недоступна.")
             return
-
-        # 2. Генерация облака слов
-        image_path = generate_wordcloud_image(comments_words)
-
-        # 3. Отправка изображения пользователю
-        photo = FSInputFile(image_path)
-        await message.answer_photo(photo, caption="Ваше облако слов по комментариям на Habr готово!")
         
-        # 4. Удаление временного файла изображения
+        filtered_words = filter_comments(comments)
+
+        image_path = generate_wordcloud_image(filtered_words)
+
+        photo = FSInputFile(image_path)
+        await message.answer_photo(photo, caption="Облако слов по комментариям пользователя на Habr готово!")
+
         os.remove(image_path)
+
+        analytics_result = get_analytics(comments)
+        await message.answer("Анализ комментариев пользователя готов!")
+        await message.answer(analytics_result)
+
+
 
     except Exception as e:
         logging.error(f"Ошибка при обработке запроса: {e}")
         await message.answer("Произошла ошибка во время обработки вашего запроса. Попробуйте позже.")
 
 
+
 async def main():
     """
     Основная функция для запуска бота.
+
+    :rtype: None
     """
     await dp.start_polling(bot)
+
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

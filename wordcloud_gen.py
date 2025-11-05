@@ -1,14 +1,39 @@
-def generate_wordcloud_image(words: list) -> str:
-    """Функция-заглушка для генерации облака слов. Возвращает путь к файлу."""
-    print("Генерация облака слов...")
-    # Здесь ваш код генерации изображения
-    # Он должен сохранить файл и вернуть путь к нему
-    from wordcloud import WordCloud
-    import matplotlib.pyplot as plt
+import os
+import uuid
 
-    text = " ".join(words)
-    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+
+
+
+def generate_wordcloud_image(words: str) -> str:
+    """
+    Генерация облака слов. Возвращает путь к файлу.
+
+    :param str words: Строка, состоящая из предобработанных строк
+    :return: Путь к файлу с облаком слов
+    :rtype: str
+    """
+
+    def save_image() -> str:
+        """
+        Сохраняет изображение 
+
+        :return: Путь к результирующему файлу
+        :rtype: str
+        """
+
+        if not os.path.exists("temp"):
+            os.makedirs("temp")
+
+        unique_id = str(uuid.uuid4()).split('-')[0]
+
+        image_path = f"temp/habr_wordcloud_{unique_id}.png"
+        wordcloud.to_file(image_path)
+
+        return image_path
     
-    image_path = "habr_wordcloud.png"
-    wordcloud.to_file(image_path)
-    return image_path
+    print("Генерация облака слов...")
+    wordcloud = WordCloud(width=1000, height=1000, random_state=41, collocations=False).generate(words)
+
+    return save_image()
